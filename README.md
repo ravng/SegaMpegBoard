@@ -6,6 +6,11 @@ Tested on Scud Race but can't see why it would not work in other aracdes with th
 
 It uses the cheap DFPlayer MP3 module for soundtrack files and attiny84 for the communication.
 
+A jumper is used to select different soundtracks (folders). 
+Folder 1-4 plays the same sound track for each race track every time, while folder 5 will play songs in random order. 
+If no jumper installed it will use folder "01", see source for details. 
+
+
 IMPORTANT NOTE!
 The attiny might need a clock calibration to work. 
 I supposed it would be smart to add an external clock, but I didn't.
