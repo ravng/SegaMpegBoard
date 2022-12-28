@@ -3,32 +3,26 @@
 Sega Mpeg Board emulator
 By Sixbynine 2022
 
-
 Tracks:
 Filename  Use
-0.mp3     Intro/Attract
-1.mp3     Medium Track
-2.mp3     Beginner Night
-3.mp3     Beginner Day
-4.mp3     Extra
-5.mp3     Expert
-6.mp3     Selector 
-7.mp3     Name entry 
-8.mp3     Goal
-9.mp3     Ending
-
-Folder equals selection jumpers in binary:
-Examples:
-SD:1/0.mp3  = Jumpers(A-D) 0001
-SD:2/0.mp3  = Jumpers(A-D) 0010 
-and so on.
-Folder from 1 to 15
+01/001.mp3     Medium Track
+01/002.mp3     Beginner Night
+01/003.mp3     Beginner Day
+01/004.mp3     Extra
+01/005.mp3     Expert
+01/006.mp3     Selector 
+01/007.mp3     Name entry 
+01/008.mp3     Goal
+01/009.mp3     Ending
+01/010.mp3     Intro/Attract
 */
 
 // DFMini setup
 #include <SoftwareSerial.h>
 #include "DFRobotDFPlayerMini.h"
+#include <EEPROM.h>
 SoftwareSerial mp3serial(7,6);
+SoftwareSerial midiserial(5,4);
 DFRobotDFPlayerMini myDFPlayer;
 
 // HW setup
@@ -43,62 +37,95 @@ byte mididata[3];
 unsigned int c=0;
 unsigned int folder=0;
 unsigned int trackplaying=0;
+unsigned long ts=millis();
 
 unsigned int getfolder() {
+  // Get jumper settings for folder to play
   int sA = digitalRead(selectA);
   int sB = digitalRead(selectB);
   int sC = digitalRead(selectC);
   int sD = digitalRead(selectD);
-  return(1*sA + 2*sB + 4*sC + 8*sD);
+  if ( sA == 1 and sB == 1 and sC == 1 and sD == 1 )
+    return(1);
+  if ( sA == 0 and sB == 1 and sC == 1 and sD == 1 )
+    return(2);
+  if ( sA == 1 and sB == 0 and sC == 1 and sD == 1 )
+    return(3);
+  if ( sA == 1 and sB == 1 and sC == 0 and sD == 1 )
+    return(4);
+  if ( sA == 1 and sB == 1 and sC == 1 and sD == 0 )
+    return(5);
+  return(1);  
 }
 
+void blinkled(int num) {
+    for ( int i=0; i < num; i++ ) {
+      digitalWrite(led, HIGH);
+      delay(200);
+      digitalWrite(led, LOW);
+      delay(200);
+    }
+}
 void playtrack(byte track) {
-  digitalWrite(led, LOW);
+  if ( track == 0 )
+    track=10;
+  mp3serial.listen(); 
   if ( trackplaying != track ) {
     myDFPlayer.playFolder(folder, track);  
   }
   trackplaying=track;
-  digitalWrite(led, HIGH);
+  midiserial.listen();
 }
+
 void stoptrack() {
-  digitalWrite(led, LOW);
+  mp3serial.listen();
   myDFPlayer.pause();
   trackplaying=0;
-  digitalWrite(led, HIGH);
+  midiserial.listen();
 }
+
 void setup() {
-  Serial.begin(31250);     // Midi serial
-  mp3serial.begin(9600);   // Mp3 serial
-  pinMode(led, OUTPUT);
+  // Tune cpu
+  byte T = EEPROM.read(0);
+  OSCCAL = T;
+  midiserial.begin(31250);              
+  mp3serial.begin(9600);            
+  pinMode(led, OUTPUT);             
+  digitalWrite(led, LOW);
   pinMode(selectA, INPUT_PULLUP);
   pinMode(selectB, INPUT_PULLUP);
   pinMode(selectC, INPUT_PULLUP);
   pinMode(selectD, INPUT_PULLUP);
   folder=getfolder();
-  digitalWrite(led, HIGH);
-  delay(200);
-  digitalWrite(led, LOW);
-  // Init mp3
+  blinkled(folder);
+  mp3serial.listen();
   myDFPlayer.begin(mp3serial);
-  digitalWrite(led, HIGH);
   myDFPlayer.volume(20);
-  myDFPlayer.enableLoopAll();
+  myDFPlayer.enableLoop();
 }
 
 void loop() {
   // Check for Midi data
-  if ( Serial.available() ) {
-      mididata[c++] = Serial.read();
+  midiserial.listen();
+  if ( midiserial.available() ) {
+      // Capture 3 bytes
+      byte indata = midiserial.read();
+      if ( indata == 0xAF )
+        c=0;
+      mididata[c++] = indata;
       if ( c == 3 ) {
         // Parse midi data
         if ( mididata[0] == 0xAF and mididata[1] == 0x6F ) {  // Song command
-          playtrack(mididata[2]);
+          if ( folder != 5 )
+            playtrack(mididata[2]);
+          else {
+           playtrack(random(1,10));
+          }
         }
-        if ( mididata[0] == 0xAF and mididata[1] == 0x3 and mididata[2] == 0x18 ) {  // Stop
+        if ( mididata[0] == 0xAF and mididata[1] == 0x3 and mididata[2] == 0x18 ) {  // Stop command
           stoptrack();
         }
         c=0;         
       }
   }
 }
-
