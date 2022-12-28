@@ -1,0 +1,22 @@
+Sega Mpeg Board BOM
+
+C1:	10uF Capacitor polarized	
+C2:	0.1uF Capacitor
+LED1:	Any color led
+R1:	10k *
+R2:	220R
+R3:	220R
+R4:	220R
+R5:	220R
+R6:	1k
+R7:	1k
+R8:	10k *
+IC1:	Attiny84 
+IC2:	6N138 Opto Isolator
+IC3:  DFPlayer module (suggest female header pins)
+All connectors:	2.54mm Male Header pins
+
+
+
+
+*(will most likely work perfectly fine without!)
